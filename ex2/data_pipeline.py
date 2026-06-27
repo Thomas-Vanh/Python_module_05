@@ -122,48 +122,91 @@ class DataStream():
             rem_proc: int = len(proc._lst)
             print(f"{name}: total {len(proc._lst)} items processed,"
                   f" remaining {rem_proc} on processor")
+    
+    def output_pipeline(self, nb: int, plugin: ExportPlugin) -> None:
+        for entry in self._proc:
+            proc = entry["proc"]
+            collected_data: list[tuple[int, str]] = []
+            for _ in range(nb):
+                try:
+                    item = proc.output()
+                    collected_data.append(item)
+                except IndexError:
+                    break
+            if collected_data:
+                plugin.process_output(collected_data)
+
+
+class ExportPlugin(typing.Protocol):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        ...
+
+class JSONPlugin(ExportPlugin):
+    def process_output(self, data):
+        print("JSON output:")
+        json_pairs = [f'"item_{item[0]}": "{item[1]}"' for item in data]
+        json_str = "{" + ", ".join(json_pairs) + "}"
+        print(json_str)
+
+
+class CSVPlugin(ExportPlugin):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        print("CSV output:")
+        csv_row = ",".join(item[1] for item in data)
+        print(csv_row)
 
 
 if __name__ == "__main__":
-    print("=== Code Nexus - Data Stream ===\n")
-    print("Initialize Data Stream...")
+    print("=== Code Nexus - Data Pipeline ===\n")
+    print("Initialize Data Stream...\n")
+    stream_pipeline = DataStream()
+    print("== DataStream statistics ==")
+    stream_pipeline.print_processors_stats()
 
-    stream: DataStream = DataStream()
-    print("== DataStream statistics ==")
-    stream.print_processors_stats()
-    print("\nRegistering Numeric Processor\n")
-    num_proc: NumericProcessor = NumericProcessor()
-    stream.register_processor(num_proc)
-    batch: list[typing.Any] = ['Hello world',
-                               [3.14, -1, 2.71],
-                               [{'log_level': 'WARNING',
-                                 'log_message':
-                                 'Telnet access! Use ssh instead'},
-                                {
-                                  'log_level': 'INFO',
-                                  'log_message': 'User wil is connected'}],
-                               42,
-                               ['Hi', 'five']]
-    print(f"Send first batch of data stream: {batch}")
-    stream.process_stream(batch)
-    print("== DataStream statistics ==")
-    stream.print_processors_stats()
+    print("\nRegistering Processors\n")
+    num_p = NumericProcessor()
+    text_p = TextProcessor()
+    log_p = LogProcessor()
+    stream_pipeline.register_processor(num_p)
+    stream_pipeline.register_processor(text_p)
+    stream_pipeline.register_processor(log_p)
 
-    print("\nRegistering other data processors")
-    txt_proc: TextProcessor = TextProcessor()
-    log_proc: LogProcessor = LogProcessor()
-    stream.register_processor(txt_proc)
-    stream.register_processor(log_proc)
-    print("Send the same batch again")
-    stream.process_stream(batch)
-    print("== DataStream statistics ==")
-    stream.print_processors_stats()
-    print("\nConsume some elements from the data processors:" \
-          "Numeric 3, Text 2, Log 1")
-    for i in range(3):
-        num_proc.output()
-    for i in range(2):
-        txt_proc.output()
-    log_proc.output()
-    print("== DataStream statistics ==")
-    stream.print_processors_stats()
+    batch_1 = [
+        'Hello world', 
+        [3.14, -1, 2.71], 
+        [
+            {'log_level': 'WARNING', 'log_message': 'Telnet access! Use ssh instead'}, 
+            {'log_level': 'INFO', 'log_message': 'User wil is connected'}
+        ], 
+        42, 
+        ['Hi', 'five']
+    ]
+    print(f"\nSend first batch of data on stream: {batch_1}\n")
+    stream_pipeline.process_stream(batch_1)
+    print("\n== DataStream statistics ==")
+    stream_pipeline.print_processors_stats()
+
+    print("\nSend 3 processed data from each processor to a CSV plugin:")
+    stream_pipeline.output_pipeline(3, CSVPlugin())
+    print("\n== DataStream statistics ==")
+    stream_pipeline.print_processors_stats()
+
+    batch_2 = [
+        21, 
+        ['I love AI', 'LLMs are wonderful', 'Stay healthy'], 
+        [
+            {'log_level': 'ERROR', 'log_message': '500 server crash'}, 
+            {'log_level': 'NOTICE', 'log_message': 'Certificate expires in 10 days'}
+        ], 
+        [32, 42, 64, 84, 128, 168], 
+        'World hello'
+    ]
+    print(f"Send another batch of data: {batch_2}")
+    stream_pipeline.process_stream(batch_2)
+    print("\n== DataStream statistics ==")
+    stream_pipeline.print_processors_stats()
+
+    print("\nSend 5 processed data from each processor to a JSON plugin:")
+    stream_pipeline.output_pipeline(5, JSONPlugin())
+    print("\n== DataStream statistics ==")
+    stream_pipeline.print_processors_stats()
