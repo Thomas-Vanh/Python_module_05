@@ -57,7 +57,7 @@ class TextProcessor(DataProcessor):
                 isinstance(item, str) for item in data)
         return False
 
-    def ingest(self, data: typing.Union[str, list[str]]):
+    def ingest(self, data: typing.Union[str, list[str]]) -> None:
         if not self.validate(data):
             raise TypeError("Improper text data")
         if isinstance(data, list):
@@ -116,7 +116,7 @@ class DataStream():
         if not self._proc:
             print("No processor found, no data")
             return
-        for entry in self._proc: 
+        for entry in self._proc:
             proc = entry["proc"]
             name: str = proc.__class__.__name__
             rem_proc: int = len(proc._lst)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     stream.process_stream(batch)
     print("== DataStream statistics ==")
     stream.print_processors_stats()
-    print("\nConsume some elements from the data processors:" \
+    print("\nConsume some elements from the data processors:"
           "Numeric 3, Text 2, Log 1")
     for i in range(3):
         num_proc.output()

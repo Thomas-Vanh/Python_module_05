@@ -57,7 +57,7 @@ class TextProcessor(DataProcessor):
                 isinstance(item, str) for item in data)
         return False
 
-    def ingest(self, data: typing.Union[str, list[str]]):
+    def ingest(self, data: typing.Union[str, list[str]]) -> None:
         if not self.validate(data):
             raise TypeError("Improper text data")
         if isinstance(data, list):

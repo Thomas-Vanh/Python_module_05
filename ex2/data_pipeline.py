@@ -57,7 +57,7 @@ class TextProcessor(DataProcessor):
                 isinstance(item, str) for item in data)
         return False
 
-    def ingest(self, data: typing.Union[str, list[str]]):
+    def ingest(self, data: typing.Union[str, list[str]]) -> None:
         if not self.validate(data):
             raise TypeError("Improper text data")
         if isinstance(data, list):
@@ -89,6 +89,27 @@ class LogProcessor(DataProcessor):
             self._lst.append(": ".join(data.values()))
 
 
+class ExportPlugin(typing.Protocol):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        ...
+
+
+class JSONPlugin(ExportPlugin):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        print("JSON output:")
+        json_pairs: list[str] = [f'"item_{item[0]}": "{item[1]}"'
+                                 for item in data]
+        json_str: str = "{" + ", ".join(json_pairs) + "}"
+        print(json_str)
+
+
+class CSVPlugin(ExportPlugin):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        print("CSV output:")
+        csv_row: str = ",".join(item[1] for item in data)
+        print(csv_row)
+
+
 class DataStream():
     def __init__(self) -> None:
         self._proc: list[dict[str, typing.Any]] = []
@@ -116,13 +137,13 @@ class DataStream():
         if not self._proc:
             print("No processor found, no data")
             return
-        for entry in self._proc: 
+        for entry in self._proc:
             proc = entry["proc"]
             name: str = proc.__class__.__name__
             rem_proc: int = len(proc._lst)
             print(f"{name}: total {len(proc._lst)} items processed,"
                   f" remaining {rem_proc} on processor")
-    
+
     def output_pipeline(self, nb: int, plugin: ExportPlugin) -> None:
         for entry in self._proc:
             proc = entry["proc"]
@@ -135,25 +156,6 @@ class DataStream():
                     break
             if collected_data:
                 plugin.process_output(collected_data)
-
-
-class ExportPlugin(typing.Protocol):
-    def process_output(self, data: list[tuple[int, str]]) -> None:
-        ...
-
-class JSONPlugin(ExportPlugin):
-    def process_output(self, data):
-        print("JSON output:")
-        json_pairs = [f'"item_{item[0]}": "{item[1]}"' for item in data]
-        json_str = "{" + ", ".join(json_pairs) + "}"
-        print(json_str)
-
-
-class CSVPlugin(ExportPlugin):
-    def process_output(self, data: list[tuple[int, str]]) -> None:
-        print("CSV output:")
-        csv_row = ",".join(item[1] for item in data)
-        print(csv_row)
 
 
 if __name__ == "__main__":
@@ -172,13 +174,15 @@ if __name__ == "__main__":
     stream_pipeline.register_processor(log_p)
 
     batch_1 = [
-        'Hello world', 
-        [3.14, -1, 2.71], 
+        'Hello world',
+        [3.14, -1, 2.71],
         [
-            {'log_level': 'WARNING', 'log_message': 'Telnet access! Use ssh instead'}, 
-            {'log_level': 'INFO', 'log_message': 'User wil is connected'}
-        ], 
-        42, 
+            {'log_level': 'WARNING', 'log_message':
+             'Telnet access! Use ssh instead'},
+            {'log_level': 'INFO', 'log_message':
+             'User wil is connected'}
+        ],
+        42,
         ['Hi', 'five']
     ]
     print(f"\nSend first batch of data on stream: {batch_1}\n")
@@ -192,13 +196,15 @@ if __name__ == "__main__":
     stream_pipeline.print_processors_stats()
 
     batch_2 = [
-        21, 
-        ['I love AI', 'LLMs are wonderful', 'Stay healthy'], 
+        21,
+        ['I love AI', 'LLMs are wonderful', 'Stay healthy'],
         [
-            {'log_level': 'ERROR', 'log_message': '500 server crash'}, 
-            {'log_level': 'NOTICE', 'log_message': 'Certificate expires in 10 days'}
-        ], 
-        [32, 42, 64, 84, 128, 168], 
+            {'log_level': 'ERROR', 'log_message':
+             '500 server crash'},
+            {'log_level': 'NOTICE', 'log_message':
+             'Certificate expires in 10 days'}
+        ],
+        [32, 42, 64, 84, 128, 168],
         'World hello'
     ]
     print(f"Send another batch of data: {batch_2}")
